@@ -1,0 +1,11 @@
+{
+  "appId": "com.kasir.warung",
+  "appName": "Kasir Warung",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "plugins": {
+    "BarcodeScanner": {
+      "formats": ["EAN_13","EAN_8","UPC_A","UPC_E","CODE_128","CODE_39","ITF","QR_CODE"]
+    }
+  }
+}
