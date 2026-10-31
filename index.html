@@ -136,7 +136,10 @@ small{color:var(--m);font-size:12px;line-height:1.5}
 </section>
 
 <section class="pg" id="pp">
-  <input class="in" id="qp" type="search" placeholder="Cari produk..." oninput="renP()">
+  <div class="rw" style="gap:8px;margin-bottom:10px">
+    <input class="in" id="qp" type="search" placeholder="Cari produk / scan barcode..." oninput="renP()" style="margin:0">
+    <button class="bs" onclick="openScan('stock')" style="padding:12px 14px;font-size:18px" title="Scan kamera">📷</button>
+  </div>
   <div class="ab" style="margin-bottom:10px">
     <button class="bs" onclick="$('pimp').click()">⬆ Impor CSV</button>
     <button class="bs" onclick="exportProducts()">⬇ Ekspor CSV</button>
@@ -539,6 +542,7 @@ function renBk(){
 }
 function renK(){
   const q=$('qs').value.trim().toLowerCase();
+  if(!q){$('grid').innerHTML='<div class="em">Ketik nama produk atau scan barcode untuk mencari</div>';renBk();renHb();return}
   const a=P.filter(p=>p.name.toLowerCase().includes(q)||(p.bc&&p.bc.toLowerCase()===q));
   $('grid').innerHTML=a.length?a.map(p=>{
     const off=p.stock!=null&&p.stock<=0;
@@ -976,14 +980,23 @@ function onCode(code){
   if(code===SC.last&&now-SC.lastT<3000)return;
   SC.last=code;SC.lastT=now;
   if(SC.mode==='field'){
+    const d=P.find(x=>x.bc===code&&x.id!==$('pid').value);
+    if(d){toast('Barcode sudah dipakai produk: '+d.name);return}
     $('pbc').value=code;
     closeScan();
     toast('Barcode terisi: '+code);
     return;
   }
+  if(SC.mode==='stock'){
+    const e=P.find(x=>x.bc===code);
+    if(e){openP(e.id);toast('Produk ditemukan: '+e.name)}
+    else{openP();$('pbc').value=code;toast('Barcode baru: isi data produk lalu Simpan')}
+    return;
+  }
   const p=P.find(x=>x.bc===code);
   if(p){
     addC(p.id);
+    $('qs').value=p.name;renK();
     if(navigator.vibrate)try{navigator.vibrate(50)}catch(e){}
     toast('✔ '+p.name+' ditambahkan');
   }else{
