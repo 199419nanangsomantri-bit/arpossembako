@@ -1,0 +1,67 @@
+name: Build APK
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - run: npm install
+      - name: Siapkan folder www
+        run: |
+          mkdir -p www
+          cp index.html www/
+      - run: '[ -d android ] || npx cap add android'
+      - name: Inject permissions
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.CAMERA' $M || sed -i '/<application/i \
+            <uses-permission android:name="android.permission.CAMERA" />\
+            <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />\
+            <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />\
+            <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />\
+            <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />' $M
+      - name: Inject scanner module
+        run: |
+          M=android/app/src/main/AndroidManifest.xml
+          grep -q 'mlkit.vision.DEPENDENCIES' $M || sed -i '/<\/application>/i \
+            <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />' $M
+      - name: Pasang ikon aplikasi
+        run: |
+          npm install --prefix /tmp/ic sharp
+          cat > /tmp/ic/ikon.js <<'EOF'
+          const sharp = require('sharp');
+          const fs = require('fs');
+          const R = 'android/app/src/main/res';
+          const sizes = { mdpi: [48, 108], hdpi: [72, 162], xhdpi: [96, 216], xxhdpi: [144, 324], xxxhdpi: [192, 432] };
+          (async () => {
+            for (const [n, [l, f]] of Object.entries(sizes)) {
+              const d = R + '/mipmap-' + n;
+              fs.mkdirSync(d, { recursive: true });
+              await sharp('assets/icon-only.png').resize(l, l).toFile(d + '/ic_launcher.png');
+              const mask = Buffer.from('<svg width="' + l + '" height="' + l + '"><circle cx="' + (l / 2) + '" cy="' + (l / 2) + '" r="' + (l / 2) + '"/></svg>');
+              await sharp('assets/icon-only.png').resize(l, l).composite([{ input: mask, blend: 'dest-in' }]).png().toFile(d + '/ic_launcher_round.png');
+              await sharp('assets/icon-foreground.png').resize(f, f).toFile(d + '/ic_launcher_foreground.png');
+            }
+          })().catch(e => { console.error(e); process.exit(1); });
+          EOF
+          R=android/app/src/main/res
+          rm -f $R/mipmap-*/ic_launcher*.png $R/mipmap-*/ic_launcher*.webp
+          NODE_PATH=/tmp/ic/node_modules node /tmp/ic/ikon.js
+          mkdir -p $R/mipmap-anydpi-v26 $R/values
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n  <background android:drawable="@color/ic_launcher_background"/>\n  <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n' > $R/mipmap-anydpi-v26/ic_launcher.xml
+          cp $R/mipmap-anydpi-v26/ic_launcher.xml $R/mipmap-anydpi-v26/ic_launcher_round.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n  <color name="ic_launcher_background">#0F766E</color>\n</resources>\n' > $R/values/ic_launcher_background.xml
+          rm -f $R/drawable-v24/ic_launcher_foreground.xml $R/drawable/ic_launcher_background.xml
+          ls -la $R/mipmap-xxxhdpi
+      - run: npx cap sync android
+      - run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kasir-warung-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
