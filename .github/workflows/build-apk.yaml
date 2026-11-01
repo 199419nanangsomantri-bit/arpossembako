@@ -33,14 +33,17 @@ jobs:
             <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />' $M
       - name: Pasang ikon aplikasi
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
+          IM=$(command -v magick || command -v convert)
+          echo "Memakai: $IM"
           R=android/app/src/main/res
           rm -f $R/mipmap-*/ic_launcher*.png $R/mipmap-*/ic_launcher*.webp
           for d in mdpi:48:108 hdpi:72:162 xhdpi:96:216 xxhdpi:144:324 xxxhdpi:192:432; do
             n=${d%%:*}; r=${d#*:}; l=${r%%:*}; f=${r#*:}
             mkdir -p $R/mipmap-$n
-            convert assets/icon-only.png -resize ${l}x${l} $R/mipmap-$n/ic_launcher.png
-            convert assets/icon-only.png -resize ${l}x${l} \( -size ${l}x${l} xc:none -fill white -draw "circle $((l/2)),$((l/2)) $((l/2)),0" \) -compose DstIn -composite $R/mipmap-$n/ic_launcher_round.png
-            convert assets/icon-foreground.png -resize ${f}x${f} $R/mipmap-$n/ic_launcher_foreground.png
+            $IM assets/icon-only.png -resize ${l}x${l} $R/mipmap-$n/ic_launcher.png
+            $IM assets/icon-only.png -resize ${l}x${l} \( -size ${l}x${l} xc:none -fill white -draw "circle $((l/2)),$((l/2)) $((l/2)),0" \) -compose DstIn -composite $R/mipmap-$n/ic_launcher_round.png
+            $IM assets/icon-foreground.png -resize ${f}x${f} $R/mipmap-$n/ic_launcher_foreground.png
           done
           mkdir -p $R/mipmap-anydpi-v26 $R/values
           printf '<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n  <background android:drawable="@color/ic_launcher_background"/>\n  <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n</adaptive-icon>\n' > $R/mipmap-anydpi-v26/ic_launcher.xml
