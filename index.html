@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kasir Warung</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: 0 auto; }
+    h1 { font-size: 20px; }
+    button { padding: 12px 20px; font-size: 16px; margin: 8px 4px; cursor: pointer; }
+    #status { margin-top: 12px; padding: 10px; border-radius: 6px; background: #f0f0f0; font-size: 14px; }
+    .error { background: #ffe0e0 !important; color: #a00; }
+    .success { background: #e0ffe0 !important; color: #060; }
+  </style>
+</head>
+<body>
+  <h1>Kasir Warung</h1>
+
+  <button id="btnConnect">1. Hubungkan Printer</button>
+  <button id="btnPrint">2. Cetak Struk Contoh</button>
+
+  <div id="status">Status: belum terhubung</div>
+
+  <script type="module">
+    import { BtThPrinter } from 'capacitor-bluetooth-thermal-printer';
+
+    // ============================================
+    // GANTI DENGAN MAC ADDRESS PRINTER ANDA
+    // Contoh: '00:11:22:33:44:55'
+    // ============================================
+    const PRINTER_MAC = '00:11:22:33:44:55';
+
+    const statusEl = document.getElementById('status');
+
+    function setStatus(msg, isError = false, isSuccess = false) {
+      statusEl.textContent = 'Status: ' + msg;
+      statusEl.className = isError ? 'error' : (isSuccess ? 'success' : '');
+    }
+
+    // Tombol 1: Connect ke printer
+    document.getElementById('btnConnect').addEventListener('click', async () => {
+      setStatus('menghubungkan ke ' + PRINTER_MAC + ' ...');
+      try {
+        await BtThPrinter.connect({ address: PRINTER_MAC });
+        setStatus('terhubung ke printer ✓', false, true);
+      } catch (err) {
+        setStatus('gagal connect: ' + (err.message || err), true);
+        console.error('Connect error:', err);
+      }
+    });
+
+    // Tombol 2: Cetak struk contoh (berupa gambar base64)
+    document.getElementById('btnPrint').addEventListener('click', async () => {
+      setStatus('mencetak ...');
+      try {
+        // Buat struk sederhana sebagai gambar menggunakan Canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = 384;  // lebar kertas 58mm
+        canvas.height = 200;
+        const ctx = canvas.getContext('2d');
+
+        // Background putih
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Teks struk
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 20px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('WARUNG ANDA', 192, 30);
+
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText('-----------------------------', 20, 60);
+        ctx.fillText('Nasi Goreng       Rp 15.000', 20, 90);
+        ctx.fillText('Es Teh             Rp  5.000', 20, 115);
+        ctx.fillText('-----------------------------', 20, 140);
+        ctx.font = 'bold 16px monospace';
+        ctx.fillText('TOTAL:             Rp 20.000', 20, 170);
+
+        // Convert canvas ke base64 PNG
+        const base64 = canvas.toDataURL('image/png');
+
+        await BtThPrinter.printImage({
+          image: base64,
+          width: 384,
+          align: 1  // 0=kiri, 1=tengah, 2=kanan
+        });
+
+        setStatus('struk berhasil dicetak ✓', false, true);
+      } catch (err) {
+        setStatus('gagal cetak: ' + (err.message || err), true);
+        console.error('Print error:', err);
+      }
+    });
+  </script>
+</body>
+</html>
