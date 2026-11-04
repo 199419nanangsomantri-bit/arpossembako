@@ -270,7 +270,7 @@ small{color:var(--m);font-size:12px;line-height:1.5}
     <div id="pibox" style="display:none"><button class="btn o" onclick="showPayInfo()" style="margin-bottom:8px">Tampilkan QRIS / info pembayaran</button></div>
     <div id="cashbox">
       <label id="cashlbl">Uang diterima</label>
-      <input class="in" id="cash" type="number" inputmode="numeric" min="0" placeholder="0" oninput="calcChg()" style="margin-bottom:6px">
+      <input class="in" id="cash" type="text" inputmode="numeric" autocomplete="off" placeholder="0" oninput="formatRupiah(this);calcChg()" style="margin-bottom:6px">
       <div class="qk" id="qk"></div>
       <div id="chg"></div>
     </div>
@@ -289,10 +289,10 @@ small{color:var(--m);font-size:12px;line-height:1.5}
     <label>Nama produk</label><input class="in" id="pn" placeholder="Contoh: Beras">
     <label>Barcode (opsional)</label>
     <div class="rw" style="gap:8px;margin-bottom:10px"><input class="in" id="pbc" placeholder="Scan atau ketik" style="margin:0"><button class="bs" onclick="scanFor()" style="padding:12px 14px;font-size:18px">📷</button></div>
-    <label>Harga jual per satuan (Rp)</label><input class="in" id="pr" type="number" inputmode="numeric" min="0" placeholder="0">
-    <label>Harga modal per satuan (Rp)</label><input class="in" id="pm" type="number" inputmode="numeric" min="0" placeholder="Untuk hitung keuntungan">
+    <label>Harga jual per satuan (Rp)</label><input class="in" id="pr" type="text" inputmode="numeric" autocomplete="off" placeholder="0" oninput="formatRupiah(this)">
+    <label>Harga modal per satuan (Rp)</label><input class="in" id="pm" type="text" inputmode="numeric" autocomplete="off" placeholder="Untuk hitung keuntungan" oninput="formatRupiah(this)">
     <div class="two">
-      <div><label>Harga grosir (opsional)</label><input class="in" id="pw" type="number" inputmode="numeric" min="0" placeholder="Rp"></div>
+      <div><label>Harga grosir (opsional)</label><input class="in" id="pw" type="text" inputmode="numeric" autocomplete="off" placeholder="Rp" oninput="formatRupiah(this)"></div>
       <div><label>Min. jumlah grosir</label><input class="in" id="pq" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Contoh: 5"></div>
     </div>
     <label>Satuan</label><select class="in" id="pu" onchange="unitHint()"></select>
@@ -332,7 +332,7 @@ small{color:var(--m);font-size:12px;line-height:1.5}
     <h3>Pembayaran kasbon</h3>
     <div class="card" style="box-shadow:none;background:var(--l)"><b id="dn"></b><br>Sisa kasbon: <b id="db"></b></div>
     <label>Jumlah dibayar (Rp)</label>
-    <input class="in" id="da" type="number" inputmode="numeric" min="0" placeholder="0">
+    <input class="in" id="da" type="text" inputmode="numeric" autocomplete="off" placeholder="0" oninput="formatRupiah(this)">
     <div class="two" style="margin-bottom:10px">
       <button class="btn o" onclick="fullDebt()">Lunas</button>
       <button class="btn" onclick="payDebt()">Simpan</button>
@@ -687,9 +687,9 @@ function renQk(){
   $('qk').innerHTML=o.slice(0,5).map((v,i)=>`<button class="bs" onclick="setCash(${v})">${i===0?'Uang pas':num(v)}</button>`).join('');
 }
 function setPay(m){pay=m;renPay()}
-function setCash(v){$('cash').value=v;calcChg()}
+function setCash(v){$('cash').value=fmtNum(v);calcChg()}
 function calcChg(){
-  const e=$('chg'),r=parseFloat($('cash').value)||0,t=total();
+  const e=$('chg'),r=nv($('cash').value)||0,t=total();
   if(pay==='Cash'){
     const ch=r-t;
     e.textContent=r?(ch>=0?'Kembalian: '+rp(ch):'Kurang: '+rp(-ch)):'';
@@ -711,13 +711,13 @@ function doPay(){
   const sub=subtotal(),dsc=disc(),tot=sub-dsc;
   let paid=tot,ch=0,cust='',debt=0;
   if(pay==='Cash'){
-    paid=parseFloat($('cash').value)||0;
+    paid=nv($('cash').value)||0;
     if(paid<tot)return toast('Uang diterima kurang');
     ch=paid-tot;
   }else if(pay==='Kasbon'){
     cust=$('cust').value.trim();
     if(!cust)return toast('Isi nama pelanggan untuk kasbon');
-    paid=parseFloat($('cash').value)||0;
+    paid=nv($('cash').value)||0;
     if(paid<0)return toast('DP tidak valid');
     if(paid>=tot)return toast('Sudah lunas, pilih metode Cash');
     debt=tot-paid;
@@ -912,9 +912,9 @@ function openP(id){
   $('ft').textContent=p?'Edit produk':'Tambah produk';
   $('pid').value=p?p.id:'';
   $('pn').value=p?p.name:'';
-  $('pr').value=p?p.price:'';
-  $('pm').value=p&&p.cost!=null?p.cost:'';
-  $('pw').value=p&&p.ws!=null?p.ws:'';
+  $('pr').value=p?fmtNum(p.price):'';
+  $('pm').value=p&&p.cost!=null?fmtNum(p.cost):'';
+  $('pw').value=p&&p.ws!=null?fmtNum(p.ws):'';
   $('pq').value=p&&p.wmin!=null?p.wmin:'';
   $('pu').value=p?p.unit:'pcs';unitHint();
   $('ps').value=p&&p.stock!=null?p.stock:'';
@@ -924,12 +924,12 @@ function openP(id){
 }
 function unitHint(){$('uh').style.display=$('pu').value==='renceng'?'block':'none'}
 function saveP(){
-  const name=$('pn').value.trim(),price=parseFloat($('pr').value),unit=$('pu').value,sr=$('ps').value.trim();
+  const name=$('pn').value.trim(),price=nv($('pr').value),unit=$('pu').value,sr=$('ps').value.trim();
   if(!name)return toast('Nama produk wajib diisi');
   if(isNaN(price)||price<0)return toast('Harga jual tidak valid');
-  let cost=null;const cr=$('pm').value.trim();
+  let cost=null;const cr=$('pm').value.replace(/\./g,'').trim();
   if(cr!==''){cost=parseFloat(cr);if(isNaN(cost)||cost<0)return toast('Harga modal tidak valid')}
-  let ws=null,wmin=null;const wr=$('pw').value.trim(),wq=$('pq').value.trim();
+  let ws=null,wmin=null;const wr=$('pw').value.replace(/\./g,'').trim(),wq=$('pq').value.trim();
   if(wr!==''||wq!==''){
     ws=parseFloat(wr);wmin=parseFloat(wq);
     if(isNaN(ws)||ws<0||isNaN(wmin)||wmin<=0)return toast('Isi harga grosir dan min. jumlah dengan benar, atau kosongkan keduanya');
@@ -1365,7 +1365,7 @@ function dayStats(ds){
   return o;
 }
 function closeNums(){
-  const g=id=>parseFloat($(id).value)||0,c0=g('k0'),x=g('kx'),cv=$('kc').value.trim();
+  const g=id=>nv($(id).value)||0,c0=g('k0'),x=g('kx'),cv=$('kc').value.replace(/\./g,'').trim();
   return {c0:c0,x:x,exp:c0+CS.cashSales+CS.dp+CS.kb-CS.retCash-CS.voidCash-x,counted:cv===''?null:parseFloat(cv)};
 }
 function updClose(){
@@ -1391,16 +1391,16 @@ function renClose(){
     <div><span>Pengeluaran</span><b>${rp(st.exp)}</b></div>
   </div>
   <div class="card"><b>Hitung uang di laci</b>
-    <label>Kas awal (Rp)</label><input class="in" id="k0" type="number" inputmode="numeric" value="${c0}" oninput="updClose()">
+    <label>Kas awal (Rp)</label><input class="in" id="k0" type="text" inputmode="numeric" autocomplete="off" value="${fmtNum(c0)}" oninput="formatRupiah(this);updClose()">
     <div class="ls">
       <div><span>+ Penjualan tunai</span><b>${rp(st.cashSales)}</b></div>
       <div><span>+ DP kasbon (tunai)</span><b>${rp(st.dp)}</b></div>
       <div><span>+ Pembayaran kasbon</span><b>${rp(st.kb)}</b></div>
       <div><span>- Retur / batal tunai</span><b>${rp(st.retCash+st.voidCash)}</b></div>
     </div>
-    <label>- Pengeluaran tunai dari laci (Rp)</label><input class="in" id="kx" type="number" inputmode="numeric" value="${xc}" oninput="updClose()">
+    <label>- Pengeluaran tunai dari laci (Rp)</label><input class="in" id="kx" type="text" inputmode="numeric" autocomplete="off" value="${fmtNum(xc)}" oninput="formatRupiah(this);updClose()">
     <div class="rw" style="margin:4px 0 10px"><b>Seharusnya di laci</b><b class="pr" id="kex"></b></div>
-    <label>Uang di laci (hitung fisik)</label><input class="in" id="kc" type="number" inputmode="numeric" value="${rec?rec.counted:''}" placeholder="0" oninput="updClose()">
+    <label>Uang di laci (hitung fisik)</label><input class="in" id="kc" type="text" inputmode="numeric" autocomplete="off" value="${rec?fmtNum(rec.counted):''}" placeholder="0" oninput="formatRupiah(this);updClose()">
     <div class="rw" style="margin-bottom:8px"><b>Selisih</b><b id="kdf"></b></div>
     <label>Catatan</label><input class="in" id="kn" value="${esc(rec&&rec.note?rec.note:'')}" placeholder="Opsional">
     <div class="two"><button class="btn o" onclick="printClose()">Cetak rekap</button><button class="btn" onclick="saveClose()">Simpan tutup kasir</button></div>
@@ -1438,7 +1438,7 @@ function renExp(){
   $('rk').innerHTML=`<div class="card">
     <b>Catat pengeluaran</b>
     <label>Kategori</label><select class="in" id="ec">${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
-    <label>Nominal (Rp)</label><input class="in" id="ea" type="number" inputmode="numeric" min="0" placeholder="0">
+    <label>Nominal (Rp)</label><input class="in" id="ea" type="text" inputmode="numeric" autocomplete="off" placeholder="0" oninput="formatRupiah(this)">
     <label>Catatan (opsional)</label><input class="in" id="en" placeholder="Contoh: token listrik">
     <label>Tanggal</label><input class="in" id="ed" type="date" value="${iso}">
     <button class="btn" onclick="addExp()">Simpan pengeluaran</button>
@@ -1449,7 +1449,7 @@ function renExp(){
   </div>`;
 }
 function addExp(){
-  const amt=parseFloat($('ea').value);
+  const amt=nv($('ea').value);
   if(!(amt>0))return toast('Nominal pengeluaran harus lebih dari 0');
   let d=new Date();const v=$('ed').value;
   if(v){const a=v.split('-').map(Number);const x=new Date(a[0],a[1]-1,a[2],12,0,0);if(!isNaN(x)&&dk(x)!==dk(d))d=x}
@@ -1474,16 +1474,34 @@ function openDebt(i){
   $('dh').innerHTML=h.map(l=>`<div style="display:flex;justify-content:space-between;padding:5px 0"><small>${fd(l.date)}</small><small>${l.type==='utang'?'Kasbon':'Bayar'} ${rp(l.amt)}</small></div>`).join('');
   openM('dm');
 }
-function fullDebt(){const o=balances()[DK];if(o)$('da').value=o.bal}
+function fullDebt(){const o=balances()[DK];if(o)$('da').value=fmtNum(o.bal)}
 function payDebt(){
   const o=balances()[DK];if(!o)return;
-  const amt=Math.round(parseFloat($('da').value));
+  const amt=Math.round(nv($('da').value));
   if(!(amt>0))return toast('Isi jumlah pembayaran');
   if(amt>o.bal)return toast('Melebihi sisa kasbon ('+rp(o.bal)+')');
   L.push({id:'l'+Date.now().toString(36)+uid(),date:new Date().toISOString(),name:o.name,type:'bayar',amt:amt});
   sv(K.l,L);closeM('dm');renDebt();toast('Pembayaran kasbon dicatat');
 }
 
+/* ===== Format titik ribuan otomatis (hanya kolom nominal Rupiah; kolom jumlah/stok/desimal tidak dipakai) ===== */
+function fmtNum(v){
+  if(typeof v==='number'){if(!isFinite(v))return '';v=Math.round(v)}
+  const d=String(v==null?'':v).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+  return d.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+/* Ubah teks berformat ("1.250.000") jadi angka murni; kosong/tak valid menghasilkan NaN seperti parseFloat */
+function nv(v){return parseFloat(String(v==null?'':v).replace(/\./g,''))}
+function formatRupiah(el){
+  const old=el.value,pos=el.selectionStart;
+  const digits=old.slice(0,pos==null?old.length:pos).replace(/\D/g,'').length;
+  const f=fmtNum(old);
+  if(f===old)return;
+  el.value=f;
+  let i=0,c=0;
+  while(i<f.length&&c<digits){if(f.charAt(i)!=='.')c++;i++}
+  try{el.setSelectionRange(i,i)}catch(e){}
+}
 /* ===== Laporan Aset: tab "Aset & Modal" ===== */
 const AK={cash:'pos_manual_cash',modal:'pos_modal_awal'};
 function asetGet(k){try{const v=parseFloat(localStorage.getItem(k));return isFinite(v)&&v>0?v:0}catch(e){return 0}}
@@ -1501,8 +1519,8 @@ function renAset(){
   const cash=asetGet(AK.cash),modal=asetGet(AK.modal);
   $('rk').innerHTML=`<div class="card">
     <b>Aset &amp; modal warung</b>
-    <label>Uang Tunai di Laci / Bank (Rp)</label><input class="in" id="aset_cash" type="number" inputmode="numeric" min="0" placeholder="0" value="${cash||''}" oninput="updAset()">
-    <label>Modal Awal dari Adek (Rp)</label><input class="in" id="aset_modal" type="number" inputmode="numeric" min="0" placeholder="0" value="${modal||''}" oninput="updAset()">
+    <label>Uang Tunai di Laci / Bank (Rp)</label><input class="in" id="aset_cash" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="${fmtNum(cash)}" oninput="formatRupiah(this);updAset()">
+    <label>Modal Awal dari Adek (Rp)</label><input class="in" id="aset_modal" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="${fmtNum(modal)}" oninput="formatRupiah(this);updAset()">
   </div>
   <div class="kp">
     <div class="big"><small>Total Aset</small><b id="aset_total">Rp 0</b><small>Uang laci + nilai stok</small></div>
@@ -1514,7 +1532,7 @@ function renAset(){
 }
 function updAset(){
   const ec=$('aset_cash'),em=$('aset_modal');if(!ec||!em)return;
-  const cash=Math.max(0,parseFloat(ec.value)||0),modal=Math.max(0,parseFloat(em.value)||0);
+  const cash=Math.max(0,nv(ec.value)||0),modal=Math.max(0,nv(em.value)||0);
   asetSet(AK.cash,cash);asetSet(AK.modal,modal);
   const st=asetStok(),total=cash+st.nilai,sisa=modal-total;
   $('aset_stok').textContent=rp(st.nilai);
