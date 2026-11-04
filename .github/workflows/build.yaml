@@ -37,7 +37,6 @@ jobs:
           grep -q 'mlkit.vision.DEPENDENCIES' $M || sed -i '/<\/application>/i \
             <meta-data android:name="com.google.mlkit.vision.DEPENDENCIES" android:value="barcode_ui" />' $M
       - name: Buat ikon dan splash
-        continue-on-error: true
         run: |
           ls -la assets
           npx @capacitor/assets generate --android
